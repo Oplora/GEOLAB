@@ -1,10 +1,8 @@
 import re
 from main import window, straight_sum, opti_sum, show, optis, fourier_shift, normalized_coefficients
-import matplotlib.pyplot as plt
 import numpy as np
 import obspy
 from obspy.core import read, UTCDateTime
-from obspy.clients.fdsn import Client
 from obspy.io.segy.core import _read_segy, _read_su, _is_su
 from obspy.io.segy.segy import iread_su
 from obspy.core.util import get_example_file
@@ -101,11 +99,9 @@ def minmax_key_val(stream, key):
 
 def process(stream1, stream2):
     if isinstance(stream1, obspy.core.stream.Stream) and isinstance(stream2, obspy.core.stream.Stream):
-        trace_arr = []
         if (len(stream1) != len(stream2)):
             raise ValueError("Streams have different lengths")
         else:
-            trace_arr = []
             trace_amount = len(stream1)
             Basic_sum = []
             Opti_sum = []
@@ -116,15 +112,9 @@ def process(stream1, stream2):
                     temp.append(st[i].data)
                 Basic_sum.append(straight_sum(*temp))
                 snr_i = window(*temp, width=len(temp[0]))[2]
-                # snr.append(snr_i)
                 Opti_sum.append(opti_sum(*temp, **snr_i))
-                # trace_arr.append(temp)
-
-            # stream1_values = rough_data(stream1)
-            # stream2_values = rough_data(stream2)
             for i in range(trace_amount):
                 values = [stream1[i].data, stream2[i].data]
-                # show(*values)
                 snr_i = window(*values, width=len(stream1[0]))[2]
                 snr.append(snr_i)
                 Basic_sum.append(straight_sum(*values))
@@ -138,17 +128,14 @@ def opti_stream(*stream_list):
     trace_amount = len((stream_list[0]))
     offset = 'distance_from_center_of_the_source_point_to_the_center_of_the_receiver_group'
     ogt = 'ensemble_number'
-    # trace_len = len((streams[0])[0].data)
     for i in range(trace_amount):
         current_processing_traces = []
         current_offset = stream_list[0][i].stats.su.trace_header.__getitem__(offset)
         current_ogt = stream_list[0][i].stats.su.trace_header.__getitem__(ogt)
-        # print("offset: ", current_offset)
         for st in stream_list:
             current_processing_traces.append(np.asarray(st[i].data))
         opti_trace = obspy.core.trace.Trace(optis(current_processing_traces))
         opti_trace.stats.update(adict=stream_list[0][i].stats.copy())
-        # opti_trace.stats.su.clear()
         opti_trace.stats.su.update({offset: current_offset, ogt: current_ogt})
         Opti_Stream.append(opti_trace)
     return Opti_Stream
@@ -158,7 +145,6 @@ def straight_stream(*streams):
     """ Makes stream of straight summaries."""
     Str_Stream = new_stream()
     trace_amount = len((streams[0]))
-    # trace_len = len((streams[0])[0].data)
     for i in range(trace_amount):
         current_processing_traces = []
         current_offset = streams[0][i].stats.su.trace_header.__getitem__(
@@ -168,7 +154,6 @@ def straight_stream(*streams):
             current_processing_traces.append(np.asarray(st[i].data))
         straight_trace = obspy.core.trace.Trace(straight_sum(*current_processing_traces))
         straight_trace.stats.update(adict=streams[0][i].stats.copy())
-        # straight_trace.stats.su.clear()
         straight_trace.stats.su.update({'offset': current_offset, 'ogt': current_ogt})
         Str_Stream.append(straight_trace)
     return Str_Stream

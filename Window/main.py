@@ -11,7 +11,8 @@ from scipy.signal import fftconvolve
 
 fourier_normalization = 'backward'
 
-def show(*values, fig_label=None, mode='sep'):
+
+def show(*values, fig_label=None, mode='sep', color=None):
     """ Make graphs for given arrays. """
     amount_of_plots = len(values)
     if mode == 'sep':
@@ -22,8 +23,10 @@ def show(*values, fig_label=None, mode='sep'):
         else:
             for i in range(amount_of_plots):
                 counts = [k for k in range(len(values[i]))]
-                axes[i].plot(counts, values[i])
-                # axes[i].set(title='Graph {}'.format(str(i)))
+                if color is not None:
+                    axes[i].plot(counts, values[i], color=color[i])
+                else:
+                    axes[i].plot(counts, values[i])
         fig.suptitle('{}'.format(str(fig_label)), fontsize=10)
     elif mode == 'comb':
         for i in range(amount_of_plots):
@@ -36,8 +39,6 @@ def show(*values, fig_label=None, mode='sep'):
 def add_noise(ar, math_exp=0, stand_dev=0.1):
     """ Adds gauss noise for given array. """
     for i in range(len(ar)):
-        # seed = random.randrange(sys.maxsize)
-        # random.seed(seed)
         noise = random.gauss(mu=math_exp, sigma=stand_dev)
         ar[i] = ar[i] + noise
     return None
@@ -74,10 +75,10 @@ def add_bpf(to_signal, this_signal, sample):
 def taper(arr):
     """ Smooth edges by converting rectangle to trapeze"""
     length = len(arr)
-    delta = math.ceil(length * 0.1) # 5-10% of length
-    for i in range(delta+1):
+    delta = math.ceil(length * 0.1)  # 5-10% of length
+    for i in range(delta + 1):
         arr[i] = i * arr[delta] / delta
-        arr[length-1 - i] = i * (-arr[length - 1] + arr[length-1 - delta]) / delta
+        arr[length - 1 - i] = i * (-arr[length - 1] + arr[length - 1 - delta]) / delta
     return arr
 
 
@@ -149,38 +150,31 @@ def window(*traces_arr, width=None):
     2: Find ratio signal/noise for neighbouring arrays (for every frequency).
     3: Return array of weight sets (adds last counted coefficients for given trace)
     """
-    # wide is amount of counts from original data in one window
     k = 1  # k = 1, because I want to start convolution from pair (traces[0], traces[1])
-    prev_k = k-1
-    # and end on pair (traces[len(traces_arr) - 1], traces_arr[len(traces_arr)];see following line(...[:(k+1)])
     window_width = width if width is not None else len(traces_arr[0])
     weights_dict = {}  # container for SNRs
-    # weights_dict_left = {}  # container for SNRs
     trace_length = len(traces_arr[0])
-    taper_ar = taper([1]*window_width)
+    taper_ar = taper([1] * window_width)
     AKF = []
     VKF = []
     while k < len(traces_arr):
         i = 0
         pair_of_seismotes = traces_arr[(k - 1):(k + 1)]
-        # print(len(pair_of_seismotes[0])," ", len(pair_of_seismotes[1]))
         counts_vkf = trace_length
         vkf_to_return = np.zeros(counts_vkf)
         shifted_vkf = np.zeros(counts_vkf)
         akf_l = np.zeros(counts_vkf)
         akf_r = np.zeros(counts_vkf)
         while i < trace_length - window_width + 1:
-            """ All processing should be done here."""
             trace_left = np.zeros(trace_length)
             trace_right = np.zeros(trace_length)
             for j in range(window_width):
-                trace_left[j+i] = taper_ar[j]*pair_of_seismotes[0][i+j]
-                trace_right[j+i] = taper_ar[j]*pair_of_seismotes[1][i+j]
+                trace_left[j + i] = taper_ar[j] * pair_of_seismotes[0][i + j]
+                trace_right[j + i] = taper_ar[j] * pair_of_seismotes[1][i + j]
             vkf = np.correlate(trace_left, trace_right, mode='same')
-            vkf_to_return += vkf # adds to return from window function
+            vkf_to_return += vkf  # adds to return from window function
             np.double(vkf)
             shift = lagrange(vkf)
-            # print("Shift = ",shift)
             shifted_vkf += np.add(shifted_vkf, fourier_shift(vkf, shift))  # previous vkf, but having real pick in zero
             akf_l += np.add(akf_l, np.correlate(trace_left, trace_left, mode='same'))
             akf_r += np.add(akf_r, np.correlate(trace_right, trace_right, mode='same'))
@@ -194,28 +188,15 @@ def window(*traces_arr, width=None):
         snr_r = weights(av_vkf, av_akf_right)
         weights_dict.update({"{}".format(str(k - 1)): snr_l,
                              "{}".format(str(k)): snr_r})  # adds last coefficients counted for given trace
-        # if prev_k == k - 1 and prev_k != 0 and prev_k != len(traces_arr)-1:
-        #     weights_dict_left.update({"{}".format(str(k)): snr_r}) # adds first coefficients counted for given trace
-        # else:
-        #     weights_dict_left.update({"{}".format(str(k - 1)): snr_l,
-        #                               "{}".format(str(k)): snr_r})  # adds first coefficients counted for given trace
-        # prev_k += 1
         k += 1
-
-    # return [weights_dict_left, weights_dict]
     return [AKF, VKF, weights_dict]
-    # return weights_dict
 
 
 def normalized_coefficients(**SNR):
     """ Function that returns specific normalizing coefficients for each coordinate SNR value. """
-    # print(SNR)
     sum = 0
-    trace_amount = int(sorted(SNR.keys())[-1]) + 1
     trace_amount = len(SNR.keys())
     trace_length = len(SNR.get("0"))
-    # print(len(SNR.keys()))
-    # print(sorted(sorted(SNR.keys())))
     norm_coef_dict = {}
     norm_coef_ar = np.zeros((trace_amount, trace_length), dtype=np.double)
     for j in range(trace_length):
@@ -223,11 +204,8 @@ def normalized_coefficients(**SNR):
             sum += SNR.get("{}".format(i))[j]
         for i in range(trace_amount):
             norm_coef_ar[i][j] = (SNR["{}".format(i)][j]) / sum
-            # norm_coef_ar[i][j] = (SNR["{}".format(i)][j])
             norm_coef_dict.update({"{}".format(i): norm_coef_ar[i]})
         sum = 0
-    # for i in range(trace_amount):
-    #     print("For "+str(i)+" trace coefficients are: ", norm_coef_ar[i])
     return norm_coef_dict
 
 
@@ -235,21 +213,16 @@ def opti_sum(*traces, **signal_noise_rates):
     """ Main algorithm. Returns best SNR for given traces. """
     traces_amount = len(traces)
     trace_sum = 0
-    # show(*traces, mode='comb', fig_label="BEFORE")
     norm_coef = normalized_coefficients(**signal_noise_rates)
-    # show(*traces, mode='comb', fig_label="AFTER")
     for i in range(traces_amount):
         trace_sum += np.multiply(np.fft.rfft(traces[i], norm=fourier_normalization), norm_coef["{}".format(i)])
     processed_summed_trace = np.float32(np.fft.irfft(trace_sum))
-    # ar = []
-    # for tr in traces:
-    #     ar.append(tr)
-    # ar.append(processed_summed_trace)
-    # show(*ar, mode='comb', fig_label="RESULT")
     return processed_summed_trace
+
 
 def optis(signal):
     return opti_sum(*signal, **window(*signal)[2])
+
 
 def straight_sum(*traces):
     """ Basic sum of traces, normalized by theirs amount. """
@@ -260,111 +233,3 @@ def straight_sum(*traces):
     processed_summed_trace = trace_sum / traces_amount
     return processed_summed_trace
 
-
-if __name__ == '__main__':
-    # counts = int(600 / 4)
-    # # trace_0 = np.zeros(counts)
-    # # trace_0[int(100 / 4)] = 3
-    # # trace_0[int(280 / 4)] = 31
-    # # add_noise(trace_0)
-    # # # show(trace_0)
-    # #
-    # # trace_1 = np.zeros(counts)  # two δ-impulses with picks at 30 and 79
-    # # trace_1[int(120 / 4)] = 3
-    # # trace_1[int(312 / 4)] = 31
-    # #
-    # # trace_2 = np.zeros(counts)  # two δ-impulses with picks at 35 and 90
-    # # trace_2[int(140 / 4)] = 7
-    # # trace_2[int(360 / 4)] = 40
-    #
-    # delta_1 = np.zeros(counts)  # δ-impulse with pick at 74
-    # delta_1[int(296 / 4)] = 40
-    # # show(delta_1)
-    #
-    # bpf_1 = bpf(0.2, 3, counts)  # band-pass filter with w1=0.2 and w2=3
-    # bpf_2 = bpf(0.1, 1, counts)  # band-pass filter with w1=0.5 and w2=1
-    #
-    # shift_t = 10
-    #
-    # signal_1 = np.convolve(delta_1, bpf_1)
-    # signal_11 = fourier_shift(signal_1.copy(), shift_t)
-    # # fft_s1 = np.fft.rfft(signal_1)
-    # # a_fft_s1 = [abs(v) for v in fft_s1]
-    # signal_2 = np.convolve(delta_1, bpf_2)
-    # signal_21 = fourier_shift(signal_2.copy(), shift_t)
-    # show(signal_1, signal_11)
-    # # fft_s2 = np.fft.rfft(signal_2)
-    # # a_fft_s2 = [abs(v) for v in fft_s2]
-    # # show(a_fft_s1, a_fft_s2)
-    # s_d = 10
-    # add_noise(signal_1, stand_dev=s_d)
-    # add_noise(signal_11, stand_dev=s_d)
-    # add_noise(signal_2, stand_dev=s_d)
-    # add_noise(signal_21, stand_dev=s_d)
-
-    """ BPF checking"""
-    # show(signal_1,signal_11)
-    # snr1 = window(signal_1, signal_11)
-    # snr_val1 = snr1.values()
-    # show(*snr_val1)
-    # print(snr1)
-    # snr2 = window(signal_2, signal_21)
-    # snr_val2 = snr2.values()
-    # show(*snr_val2)
-    """ Norm coef checking"""
-    # snr1 = window(signal_1, signal_11)
-    # a = normalized_coefficients(**snr1)
-    # print(a)
-    """ Opti sum checking"""
-
-    # OCCURS TROUBLE WITH SNR AND TRACE LENGTH. SNR LENGTH = WINDOW WIDTH, BUT TRACE LENGTH != WINDOW WIDTH
-    # snr1 = window(signal_1, signal_11)
-    # # # print(len(snr1["0"]))
-    # signals = [signal_1, signal_11]
-    # b = opti_sum(*signals, **snr1)
-    # show(*signals)
-    # show(b)
-    # print(len(snr1["0"]))
-
-    # snr1 = window(signal_1, signal_11)
-
-    # sig1 = [signal_1, signal_2]
-    #
-    # snr2 = window(signal_2, signal_21)
-    # sig2 = [signal_11, signal_21]
-    #
-    # snr1.update({"1": snr2.get("0")})
-    # snr2.update({"0": snr1.get("0")})
-    #
-    # # show(snr2["1"])
-    # # show(snr1["0"], snr1["1"], snr2["0"], snr2["1"])
-    # # show(snr1.values())
-    # # show(*sig2)
-    # # for i in ["0", "1"]:
-    # #     snr1[i] = [value / max(snr1[i]) for value in snr1[i]]
-    # #     snr2[i] = [value / max(snr2[i]) for value in snr2[i]]
-    #
-    # os1 = opti_sum(*sig1, **snr1)
-    # os2 = opti_sum(*sig2, **snr2)
-    #
-    # # show(signal_1, os1, signal_2, os2)
-    # show(signal_1, os1, bpf_1)
-    # # show(os2)
-    # os_snr = window(os1, os2)
-    # # show(snr1["0"], snr2["1"], os_snr["0"], os_snr["1"])
-    # # os_sig = [os1, os2]
-    # # the_os = opti_sum(*os_sig, **os_snr)
-    #
-    # first = [signal_1, signal_11]
-    # second = [signal_2, signal_21]
-    #
-    # snr1_to_compare = window(*first)
-    # snr2_to_compare = window(*second)
-
-    """ Garbage"""
-    # ar = [trace_0, trace_1, trace_2]
-    # a = window(*ar, wide=75)
-    # b = [10]*50
-    # show(b)
-    # taper(b)
-    # show(b)
