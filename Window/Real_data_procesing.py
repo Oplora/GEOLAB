@@ -1,4 +1,4 @@
-from main import *
+from ops import *
 import Seismic_data as sd
 
 # KEYS
@@ -35,9 +35,10 @@ if __name__ == '__main__':
         cn_values = sd.rough_data(ST_CN)
 
         # VISUALISING DATA
-        print(min_ogt)
-        show(*c_values, mode='comb', shift=min_ogt, dist=1, color='b', fig_label="Сейсмограмма ОГТ №{} без шума".format(str(num)))
-        show(*cn_values, mode='comb', shift=min_ogt, dist=1, color='b', fig_label="Сейсмограмма ОГТ №{} с шумом".format(str(num)))
+        show(*c_values, mode='comb', shift=min_ogt,
+             dist=1, color='b', fig_label="Сейсмограмма ОГТ №{} без шума".format(str(num)))
+        show(*cn_values, mode='comb', shift=min_ogt,
+             dist=1, color='b', fig_label="Сейсмограмма ОГТ №{} с шумом".format(str(num)))
 
         # PROCESSING DATA
         st = [ST_C, ST_CN]

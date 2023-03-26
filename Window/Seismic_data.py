@@ -1,5 +1,5 @@
 import re
-from main import window, straight_sum, opti_sum, show, optis, fourier_shift, normalized_coefficients
+from ops import window, straight_sum, opti_sum, show, optis, fourier_shift, normalized_coefficients
 import numpy as np
 import obspy
 from obspy.core import read, UTCDateTime
@@ -11,6 +11,10 @@ from obspy.core.util import get_example_file
 # https://ds.iris.edu/mda/ - meta-data
 # http://ds.iris.edu/ds/nodes/dmc/data/formats/ - data formats
 # https://web.mit.edu/cwpsu_v44r1/sumanual_600dpi_letter.pdf - SU info
+
+# KEYS
+offset = 'distance_from_center_of_the_source_point_to_the_center_of_the_receiver_group'
+ogt = 'ensemble_number'
 
 def get_cdp(stream, number):
     if isinstance(stream, obspy.core.stream.Stream):

@@ -1,4 +1,4 @@
-from main import *
+from ops import *
 
 if __name__ == '__main__':
     # counts = 150

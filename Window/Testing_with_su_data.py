@@ -1,4 +1,4 @@
-from main import *
+from ops import *
 import Seismic_data as sd
 
 if __name__ == '__main__':

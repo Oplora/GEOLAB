@@ -1,6 +1,6 @@
 import re
 
-from main import *
+from ops import *
 import Seismic_data as sd
 
 
