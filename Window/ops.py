@@ -1,18 +1,13 @@
-import datetime
 import math
 import random
-import sys
-import time
-
 import numpy as np
 import matplotlib.pyplot as plt
 import cmath
-from scipy.signal import fftconvolve
 
 fourier_normalization = 'backward'
 
 
-def show(*values, fig_label=None, mode='sep', color=None):
+def show(*values, fig_label=None, legend=None, mode='sep', color=None, dist=0, shift=0):
     """ Make graphs for given arrays. """
     amount_of_plots = len(values)
     if mode == 'sep':
@@ -30,8 +25,10 @@ def show(*values, fig_label=None, mode='sep', color=None):
         fig.suptitle('{}'.format(str(fig_label)), fontsize=10)
     elif mode == 'comb':
         for i in range(amount_of_plots):
-            plt.plot(range(len(values[i])), values[i], label=str(i))
-        plt.legend()
+            size = len(values[i])
+            plt.plot(range(size), values[i] + [dist * i] * size + shift, label=str(i), color=color)
+        if legend is not None:
+            plt.legend()
         plt.title('{}'.format(str(fig_label)), fontsize=10)
     plt.show()
 
