@@ -1,6 +1,7 @@
 # import libimp
 from ops import *
-import seismic_data as sd
+from monitor import show
+import seismic_data_reader as sd
 
 # KEYS
 offset = 'distance_from_center_of_the_source_point_to_the_center_of_the_receiver_group'

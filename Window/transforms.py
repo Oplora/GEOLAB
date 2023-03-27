@@ -1,0 +1,43 @@
+
+import numpy as np
+import matplotlib.pyplot as plt
+import cmath
+
+fourier_normalization = 'backward'
+
+def fourier_shift(f_t, shift_t=0, domain='t'):
+    """ Procedure that convert trace to frequency domain and shift trace by given time.
+        Returns trace in time domain if parameter domain='t', otherwise returns in frequency domain."""
+    N = f_t.size
+    fourier_transform = np.fft.rfft(f_t * 1, n=N, norm=fourier_normalization) # Множитель 5 увличивает разрешенносить СНР. Взял с потолка число 5
+    frequency_samples = np.fft.rfftfreq(N)
+    S_w = fourier_transform
+    if shift_t != 0:
+        exponents = np.asarray([cmath.exp(complex(0, -2 * np.pi * w * (-shift_t))) for w in frequency_samples])
+        S_w = np.multiply(fourier_transform, exponents)
+    f_t = np.fft.irfft(S_w, n=N, norm=fourier_normalization) if domain == 't' else S_w
+    return f_t
+
+
+def lagrange(cross_correlation, points_frequency=100, polynomial_power=4, show='no'):
+    """ Interpolation with Lagrange polynomials. """
+    x_max = int(np.argwhere(cross_correlation == max(cross_correlation))[0])
+    x_axis = np.array([i for i in range(len(cross_correlation))])
+    x = x_axis[(x_axis >= x_max - (polynomial_power / 2)) & (x_axis <= x_max + (polynomial_power / 2))]
+    y = cross_correlation[min(x):max(x) + 1]
+    y_poly = np.array([], np.double)
+    x_poly = np.linspace(x[0], x[-1], num=points_frequency)
+    for xp in x_poly:
+        yp = 0
+        for xi, yi in zip(x, y):
+            yp += yi * np.prod((xp - x[x != xi]) / (xi - x[x != xi]))
+        y_poly = np.append(y_poly, yp)
+    y_poly_max = max(y_poly)
+    x_poly_max = x_poly[int(np.argwhere(y_poly == y_poly_max)[0])]
+
+    if show == 'yes':
+        fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
+        ax1.plot(x_axis, cross_correlation, 'k', x, y, 'ro', x_poly, y_poly, 'b', x_poly_max, y_poly_max, 'go')
+        ax2.plot(x, y, 'ro', x_poly, y_poly, 'b', x_poly_max, y_poly_max, 'go')
+        plt.show()
+    return x_poly_max - int(len(cross_correlation) / 2)
