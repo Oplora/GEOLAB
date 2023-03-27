@@ -1,6 +1,6 @@
-import libimp
+# import libimp
 from ops import *
-import Seismic_data as sd
+import seismic_data as sd
 
 # KEYS
 offset = 'distance_from_center_of_the_source_point_to_the_center_of_the_receiver_group'
