@@ -1,3 +1,4 @@
+import libimp
 from ops import *
 import Seismic_data as sd
 

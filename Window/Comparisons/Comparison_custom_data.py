@@ -1,5 +1,6 @@
+import libimp
 from ops import *
-
+import sys
 
 def clone(signal, n_times, signal_list):
     for i in range(n_times):
@@ -8,7 +9,6 @@ def clone(signal, n_times, signal_list):
 
 
 def messup(signal_list, stand_div):
-
     for sig in signal_list:
         add_noise(sig, stand_dev=stand_div)
     return None
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     straight_OGT = SS(*seismogramms)
     SNR_optimal = window(*optimal_OGT)[3]
     SNR_straight = window(*straight_OGT)[3]
-    print(len(SNR_straight))
+    # print(len(SNR_straight))
 
 
     # Visualisation
