@@ -34,7 +34,7 @@ def seism_rand_noise(signals_amount=1, signal_to_clone=None, dist_range=None, se
     for _ in range(signals_amount):
         # temp_seism.append(signal_to_clone.copy())
         clone(signal_to_clone.copy(), n_times=seism_len, signal_list=temp_seism)
-        s_d = random.uniform(dist_range[0], dist_range[1])
+        s_d = uniform(dist_range[0], dist_range[1])
         messup(temp_seism, s_d)
         res_seism.append(temp_seism)
         temp_seism = []
@@ -68,9 +68,9 @@ if __name__ == '__main__':
     pi = np.pi
     # Signal component parameters
 
-    bpf_1 = bpf(pi/7, 1*pi/3, counts, freq=frequency, show=False)
-    # bpf_1 = bpf(0.1, 3, counts, freq=frequency)
-    bpf_2 = bpf(pi/6, 1*pi/5, counts, freq=frequency)
+    bpf_1 = band_pass_filter(pi/7, 1*pi/3, counts, freq=frequency, show=False)
+    # bpf_1 = band_pass_filter(0.1, 3, counts, freq=frequency)
+    bpf_2 = band_pass_filter(pi/6, 1*pi/5, counts, freq=frequency)
     # bpf_2 = bpf_1
     delta_1 = np.zeros(all_counts)
     delta_1[int(all_counts / 2) - 1] = 20
