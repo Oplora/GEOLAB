@@ -9,3 +9,11 @@ source_data:
 Comparisons/current_custom_data.py:
     Так как отражательная способность geo_reflet строится по макро-переменным модуля source_data, то возникает
     неудобство в выборе положений пиков (индекс пика должен быть меньше COUNTS).
+
+exceptions.py:
+    Информация про настраваемый вывод функции print() - https://www.geeksforgeeks.org/print-colors-python-terminal/
+
+monitor.py:
+    Информация про основные компоненты matplotlib - https://u.to/0muzHg
+    Очень странный метод manage_legend(). Он нелогично устроен; это проявляется при использовании в разных режимах
+    метода show()

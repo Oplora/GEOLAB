@@ -26,7 +26,7 @@ def geo_reflect(positions, values):
             reflectivity[i] = values[k]
         except IndexError:  # enables shift geo_reflectivity how we want
             print("{0} Some picks of geo_reflectivity wasn't recorded."
-                  " Index {1} out of range {2}".format(EXCEPTION_COLOR, i, ALL_COUNTS))
+                  " Index {1} out of range {2}\033[00m".format(EXCEPTION_COLOR, i, ALL_COUNTS))
             continue
     return reflectivity
 
