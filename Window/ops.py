@@ -1,8 +1,23 @@
 """ Библиотека для обработки сигналов с помощью многоканального фильтра, описанного в работе"""
 
-
 from transforms import *
 from smoothing import *
+
+
+def cross_correlation(first_trace_values: list, second_trace_values: list, center_max=False):
+    vkf = np.correlate(first_trace_values, second_trace_values, mode='same')
+    # Debug_vkf += vkf  # adds to return from window function
+    # np.double(vkf)
+    if not center_max:
+        return vkf
+    else:
+        shift = lagrange(vkf)
+        # shifted_vkf += np.add(shifted_vkf, fourier_shift(vkf, shift))  # previous vkf, but having real pick in zero
+        return fourier_shift(vkf, shift)  # previous vkf, but having real pick in zero
+
+
+def autocorrelation(trace_values: list):
+    return np.correlate(trace_values, trace_values, mode='same')
 
 
 def weights(vkf, akf):
@@ -27,35 +42,45 @@ def window(*traces_arr, width=None):
     wei = []  # container for SNRs
     trace_length = len(traces_arr[0])
     taper_ar = taper([1] * window_width)
-    AKF = []
-    VKF = []
+    All_debug_akfs = []
+    All_debug_vkfs = []
     while k < len(traces_arr):
         i = 0
-        pair_of_seismotes = traces_arr[(k - 1):(k + 1)]
         counts_vkf = trace_length
-        vkf_to_return = np.zeros(counts_vkf)
+        Debug_vkf = np.zeros(counts_vkf)
+        pair_of_seismotes = traces_arr[(k - 1):(k + 1)]
         shifted_vkf = np.zeros(counts_vkf)
         akf_l = np.zeros(counts_vkf)
         akf_r = np.zeros(counts_vkf)
-        while i < trace_length - window_width + 1:
+        # while i < trace_length - window_width + 1:
+        for i in range(trace_length - window_width + 1):
             trace_left = np.zeros(trace_length)
             trace_right = np.zeros(trace_length)
             for j in range(window_width):
                 trace_left[j + i] = taper_ar[j] * pair_of_seismotes[0][i + j]
                 trace_right[j + i] = taper_ar[j] * pair_of_seismotes[1][i + j]
-            vkf = np.correlate(trace_left, trace_right, mode='same')
-            vkf_to_return += vkf  # adds to return from window function
-            np.double(vkf)
-            shift = lagrange(vkf)
-            shifted_vkf += np.add(shifted_vkf, fourier_shift(vkf, shift))  # previous vkf, but having real pick in zero
-            akf_l += np.add(akf_l, np.correlate(trace_left, trace_left, mode='same'))
-            akf_r += np.add(akf_r, np.correlate(trace_right, trace_right, mode='same'))
-            i += 1  # Counter of windows amount on one seismote
-        av_akf_left = akf_l / (trace_length - window_width + 1)
-        av_akf_right = akf_r / (trace_length - window_width + 1)
-        av_vkf = shifted_vkf / (trace_length - window_width + 1)
-        VKF.append(vkf_to_return / (trace_length - window_width + 1))
-        AKF.append(av_akf_left)
+            # vkf = np.correlate(trace_left, trace_right, mode='same')
+            # Debug_vkf += vkf  # adds to return from window function
+            # np.double(vkf)
+            # shift = lagrange(vkf)
+            # shifted_vkf += np.add(shifted_vkf, fourier_shift(vkf, shift))  # previous vkf, but having real pick in zero
+            Debug_vkf += cross_correlation(trace_left, trace_right)
+            print(len(Debug_vkf))
+            shifted_vkf += cross_correlation(trace_left, trace_right, center_max=True)
+
+            # akf_l += np.add(akf_l, np.correlate(trace_left, trace_left, mode='same'))
+            # akf_r += np.add(akf_r, np.correlate(trace_right, trace_right, mode='same'))
+            akf_l += autocorrelation(trace_left)
+            akf_r += autocorrelation(trace_right)
+            # i += 1  # Counter of windows amount on one seismote
+        # av_akf_left = akf_l / (trace_length - window_width + 1)
+        # av_akf_right = akf_r / (trace_length - window_width + 1)
+        # av_vkf = shifted_vkf / (trace_length - window_width + 1)
+        av_akf_left = akf_l
+        av_akf_right = akf_r
+        av_vkf = shifted_vkf
+        All_debug_vkfs.append(Debug_vkf / (trace_length - window_width + 1))
+        All_debug_akfs.append(av_akf_left)
         snr_l = weights(av_vkf, av_akf_left)
         snr_r = weights(av_vkf, av_akf_right)
         weights_dict.update({"{}".format(str(k - 1)): snr_l,
@@ -64,7 +89,7 @@ def window(*traces_arr, width=None):
         k += 1
         if k == len(traces_arr):
             wei.append(snr_r)
-    return [AKF, VKF, weights_dict, wei]
+    return [All_debug_akfs, All_debug_vkfs, weights_dict, wei]
 
 
 def normalized_coefficients(**SNR):
@@ -107,4 +132,3 @@ def straight_sum(*traces):
         trace_sum += traces[i]
     processed_summed_trace = trace_sum / traces_amount
     return processed_summed_trace
-

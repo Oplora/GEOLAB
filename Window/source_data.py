@@ -3,10 +3,12 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
+# from ops import straight_sum, optis
 
 # MACRO-PARAMETERS
-FREQUENCY = 3  # improves band pass filter resolution (=> better signal data)
-COUNTS = 200  # also used in signal constructing. I've separated those parameters
+FREQUENCY = 3  # improves band pass filter resolution in time domain, but messing up frequency domain.
+# Use this parameter only in ploting images for diploma
+COUNTS = 200  # Improves frequency domain for each signal
 # to increase resolution in frequency domain. Not sure if it worked.
 ALL_COUNTS = FREQUENCY * COUNTS
 SEED = 1  # parameter to initialize random numbers generator. This controlling random factor is used in constructing
@@ -63,10 +65,7 @@ def band_pass_filter(w_min, w_max, show=False, crop=False):
                             top=0.88,
                             wspace=0.4,
                             hspace=0.4)
-    if crop:
-        counts = np.linspace(0, math.ceil(max_sample / 2), num=max_sample * freq)
-    else:
-        counts = np.linspace(-int(max_sample / 2), math.ceil(max_sample / 2), num=max_sample * freq)
+    counts = np.linspace(-int(max_sample / 2), math.ceil(max_sample / 2), num=max_sample * freq)
     hamming_window = []
     if w_min * w_max > 0 and abs(w_max) <= np.pi and abs(w_min) <= np.pi:  # Two rectangles
         for t in counts:
@@ -126,8 +125,7 @@ def area_reflectivity(geo_layers_amount, traces_amount, shift=0, fluctuation=Fal
     return areal_reflect
 
 
-
-def seismic_image(forming_geo_area, forming_wave, stand_div=None):
+def seismic_image(forming_geo_area, forming_wave, stand_div=0):
     """Builds """
     image = []
     for recorded_reflectivity in forming_geo_area:
@@ -136,6 +134,7 @@ def seismic_image(forming_geo_area, forming_wave, stand_div=None):
     return image
 
 
+# # DELETE METHODS BELOW
 # def sort(*seismogramms):
 #     sorted_list = []
 #     traces_same_position = []
@@ -145,9 +144,7 @@ def seismic_image(forming_geo_area, forming_wave, stand_div=None):
 #         sorted_list.append(traces_same_position)
 #         traces_same_position = []
 #     return sorted_list
-
-
-
+#
 # def OPS(*seismogramms):
 #     """Makes optimal OGT"""
 #     sorted_traces = sort(*seismogramms)
