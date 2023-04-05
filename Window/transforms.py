@@ -49,13 +49,3 @@ def lagrange(cross_correlation, points_frequency=100, polynomial_power=4, show='
     return x_poly_max - int(len(cross_correlation) / 2)
 
 
-def alter_image(*image, coefficients):
-    processed_image = []
-    for i, trace in enumerate(image):
-        # trace_in_freq_domain = fourier_shift(trace, domain='f')
-        # mul_in_freq_domain = np.multiply(trace_in_freq_domain[0], coefficients[i])
-        # processed_image.append(reverse_fourier(mul_in_freq_domain, trace_in_freq_domain[1]))
-        trace_in_freq_domain = np.fft.rfft(trace, norm=fourier_normalization)
-        mul_in_freq_domain = np.multiply(trace_in_freq_domain, coefficients[i])
-        processed_image.append(np.fft.irfft(mul_in_freq_domain, norm=fourier_normalization))
-    return processed_image
