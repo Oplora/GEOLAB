@@ -10,35 +10,22 @@ def specific_catch(error_message: str, path):
         print(notification.format(type(error_message).__name__, str(error_message), path))
     return
 
+
 def noise_presence_check(noise_rates: list):
     stabilizing_coef = 0.1 * max(noise_rates)
     if any((noise_rates + stabilizing_coef)):
         return True
     else:
-        print("\033[1;32m Trace doesn't contain noise \033[00m")
+        # print("\033[1;32m Trace doesn't contain noise \033[00m")
+        prYellow("Trace doesn't contain noise")
         return False
 
 
+# COLORFUL PRINT'S
+def prCyan(text):
+    """SeisImage error"""
+    print(f"\033[1;36m {text}\033[00m")
 
 
-
-def find_nth_value(x,n):
-    print('start')
-    try:
-        result = x[n]
-    except IndexError as err:
-        print(err)
-    else:
-        print("Your answer is ", result)
-
-def ex(signal_rates: list, noise_rates: list):
-    try:
-        stabilizing_coef = 0
-        x = 1/0
-    except Exception:
-        # print("\033[1;32m Signal is pure. There is no noise \033[00m")
-        raise Warning("\033[1;32m Signal is pure. There is no noise \033[00m")
-        print("aero")
-    except TypeError:
-        print("type")
-    return 14
+def prYellow(text):
+    print("\033[1;32m{}\033[00m".format(text))

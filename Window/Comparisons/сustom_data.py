@@ -1,7 +1,7 @@
 # import libimp
 from ops import *
 from source_data import *
-from monitor import show
+from Class_monitor import show
 
 def clone(signal, n_times, signal_list):
     for i in range(n_times):

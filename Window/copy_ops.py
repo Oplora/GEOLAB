@@ -1,11 +1,11 @@
 from transforms import *
 from smoothing import *
 from exceptions import *
-from monitor import show
+from Class_monitor import Monitor
+
 
 # MACRO-PARAMETERS
 WEIGHTS = list()
-
 
 
 def cross_cor(first_trace_values: list, second_trace_values: list, center_max=False):
@@ -28,7 +28,7 @@ def process_traces(window_width, trace1, trace2, calculate_both_akf=True) -> tup
     akf1 = np.zeros(trace_length)
     akf2 = np.zeros(trace_length)
     for count in range(trace_length - window_width + 1):
-        vkf += cross_cor(trace1, trace2)
+        vkf += cross_cor(trace1, trace2, center_max=True)
         akf1 += auto_cor(trace1)
         if calculate_both_akf:
             akf2 += auto_cor(trace2)
@@ -44,8 +44,6 @@ def window(*image, width=None, result_storage=None):
         result_storage = WEIGHTS
     window_width = width if width is not None else len(image[0])
     trace_indices = range(len(image) - 1)
-    trace_length = len(image[0])
-    taper_ar = taper([1] * window_width)  # Не понимаю зачем это нужно. Построить графики для разных параметров taper
     vkf_list, akf_list = [], []
     for number in trace_indices:
         left_trace = image[number]
@@ -74,7 +72,6 @@ def weights(vkf, akf, dim=1):
         noisy_data = noise_presence_check(noise_rate) # (УДАЛИТЬ В КОНЦЕ ОТЛАДКИ)
         if noisy_data:
             snr = smooth(np.divide(signal_rate, (noise_rate + stabilizing_coef)), 7)
-            # snr = np.divide(signal_rate, (noise_rate + stabilizing_coef))
         else:
             # Эта часть кода исключительно для этапа отладки (УДАЛИТЬ В КОНЦЕ ОТЛАДКИ).
             # Если мы подаем незашумленные данные, то отношение сигнал/
@@ -83,8 +80,6 @@ def weights(vkf, akf, dim=1):
             # snr = smooth(signal_rate, 7)
             signal_rate = [1 if rate > 50 else 0 for rate in signal_rate]
             snr = signal_rate
-        # snr = np.divide(snr, max(snr)) #normalization for right scale
-        # show(snr, color=(0.25,0.25,0.25), fig_title='SNR')
         return snr
     elif dim == 2:
         snrs = []
@@ -97,12 +92,9 @@ def weights(vkf, akf, dim=1):
 
 def alter_image(*image, coefficients):
     processed_image = []
-    for i, trace in enumerate(image):
-        # trace_in_freq_domain = fourier_shift(trace, domain='f')
-        # mul_in_freq_domain = np.multiply(trace_in_freq_domain[0], coefficients[i])
-        # processed_image.append(reverse_fourier(mul_in_freq_domain, trace_in_freq_domain[1]))
+    for trace, coefficients in zip(image, coefficients):
         trace_in_freq_domain = np.fft.rfft(trace, norm=fourier_normalization)
-        mul_in_freq_domain = np.multiply(trace_in_freq_domain, coefficients[i])
+        mul_in_freq_domain = np.multiply(trace_in_freq_domain, coefficients)
         processed_image.append(np.fft.irfft(mul_in_freq_domain, norm=fourier_normalization))
     return processed_image
 

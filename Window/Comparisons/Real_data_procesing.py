@@ -1,6 +1,6 @@
 # import libimp
 from ops import *
-from monitor import show
+from Class_monitor import show
 import seismic_data_reader as sd
 
 # KEYS
