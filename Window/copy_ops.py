@@ -1,7 +1,7 @@
 from transforms import *
 from smoothing import *
 from exceptions import *
-from Class_monitor import Monitor
+# from Class_monitor import Monitor
 
 
 # MACRO-PARAMETERS
@@ -35,9 +35,7 @@ def process_traces(window_width, trace1, trace2, calculate_both_akf=True) -> tup
     akf = [akf1, akf2] if calculate_both_akf else akf1
     return vkf, akf
 
-
-
-def window(*image, width=None, result_storage=None):
+def window(*image, process_function=process_traces, width=None, result_storage=None):
     """Позволяет работать на некоторой части, а не целой трассе. Применяется выделяет такие подобласти на двух соседних
     трассах."""
     if result_storage is None:
@@ -49,7 +47,7 @@ def window(*image, width=None, result_storage=None):
         left_trace = image[number]
         right_trace = image[number+1]
         if number < max(trace_indices):
-            correlations = process_traces(window_width, left_trace, right_trace, calculate_both_akf=False)
+            correlations = process_function(window_width, left_trace, right_trace, calculate_both_akf=False)
             akf_list.append(correlations[1])
         else:
             correlations = process_traces(window_width, left_trace, right_trace, calculate_both_akf=True)
@@ -71,7 +69,8 @@ def weights(vkf, akf, dim=1):
         stabilizing_coef = 0.1 * max(noise_rate)
         noisy_data = noise_presence_check(noise_rate) # (УДАЛИТЬ В КОНЦЕ ОТЛАДКИ)
         if noisy_data:
-            snr = smooth(np.divide(signal_rate, (noise_rate + stabilizing_coef)), 7)
+            snr = smooth(np.divide(signal_rate, (noise_rate + stabilizing_coef)), 6)
+            # snr = np.divide(signal_rate, (noise_rate + stabilizing_coef))
         else:
             # Эта часть кода исключительно для этапа отладки (УДАЛИТЬ В КОНЦЕ ОТЛАДКИ).
             # Если мы подаем незашумленные данные, то отношение сигнал/
@@ -80,6 +79,9 @@ def weights(vkf, akf, dim=1):
             # snr = smooth(signal_rate, 7)
             signal_rate = [1 if rate > 50 else 0 for rate in signal_rate]
             snr = signal_rate
+        # normalizing_coef = max(snr) / 1.8 # Подобрал (взял с потолка)
+        normalizing_coef = 1 # Подобрал (взял с потолка)
+        snr = snr / normalizing_coef
         return snr
     elif dim == 2:
         snrs = []
@@ -91,12 +93,29 @@ def weights(vkf, akf, dim=1):
 
 
 def alter_image(*image, coefficients):
+    from numpy import multiply,argmax,float64
+    from numpy.fft import rfft, irfft
     processed_image = []
+    true_scaling_coef, n, d = 0, 0, 0
     for trace, coefficients in zip(image, coefficients):
-        trace_in_freq_domain = np.fft.rfft(trace, norm=fourier_normalization)
-        mul_in_freq_domain = np.multiply(trace_in_freq_domain, coefficients)
-        processed_image.append(np.fft.irfft(mul_in_freq_domain, norm=fourier_normalization))
-    return processed_image
+        trace_in_freq_domain = rfft(trace, norm=fourier_normalization)
+        mul_in_freq_domain = multiply(trace_in_freq_domain, coefficients)
+        processed_trace = irfft(mul_in_freq_domain, norm=fourier_normalization)
+        d += max(processed_trace)
+        n += max(trace)
+        # c = float64(25)
+        # norm_coef = 1/(c)
+        # norm_coef = max(trace)/max(processed_trace)
+        # print(norm_coef)
+        processed_image.append(processed_trace)
+    true_scaling_coef = float(n / d)
+    # print(true_scaling_coef)
+    # true_scaling_coef = 1/60
+    # true_scaling_coef = 2.450699204056077
+    # return processed_image
+    return [optimal_trace * true_scaling_coef for optimal_trace in processed_image]
+
+
 
 # def optimal_filter(*image):
 #     """Действует лишь на одно изображение, а не на набор"""

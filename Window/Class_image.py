@@ -1,5 +1,5 @@
 import source_data as sd
-from copy_ops import window, alter_image
+
 from numpy import add, int64, mean, pi
 from Class_monitor import Monitor
 from exceptions import prCyan
@@ -7,7 +7,7 @@ from exceptions import prCyan
 
 class SeisImage(Monitor):
 
-    def __init__(self, traces, counts=sd.ALL_COUNTS):
+    def __init__(self, traces: list, counts=sd.ALL_COUNTS):
         self.traces = traces
         self.counts = counts
 
@@ -24,9 +24,13 @@ class SeisImage(Monitor):
 
     @property
     def snrs(self):
+        from copy_ops import window
         return window(*self.traces)
 
     def optimal(self):
+        """Transform given image to optimal image.
+        Optimal image is the result of scaling image by it's SNR (signal/noise rates) """
+        from copy_ops import alter_image
         return SeisImage(alter_image(*self.traces, coefficients=self.snrs))
 
     @staticmethod
@@ -37,10 +41,12 @@ class SeisImage(Monitor):
             if not isinstance(image, SeisImage):
                 raise TypeError(f"MCOP can process only SeisImage's list, but found {type(image)}")
             else:
-                processed_images.append(image.optimal())
+
+                processed_images.append((image.optimal()).traces)
         optimal_image = SeisImage(mean(processed_images, axis=0))
-        # return optimal_image
-        return mean(processed_images, axis=0)
+        # optimal_image = optimal_image
+        return optimal_image
+        # return mean(processed_images, axis=0)
 
     def show(self, snr=False, **kwargs):
         if snr is True or snr:
@@ -54,3 +60,5 @@ class SeisImage(Monitor):
             super().show(*snrs, X_axis=abscissa_axis, fig_title=title, **kwargs)
         else:
             super().show(*self.traces, **kwargs)
+
+
