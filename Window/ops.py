@@ -1,134 +1,99 @@
-""" Библиотека для обработки сигналов с помощью многоканального фильтра, описанного в работе"""
-
 from transforms import *
 from smoothing import *
+from exceptions import *
 
 
-def cross_correlation(first_trace_values: list, second_trace_values: list, center_max=False):
+
+# MACRO-PARAMETERS
+WEIGHTS = list()
+
+
+def cross_cor(first_trace_values: list, second_trace_values: list, center_max=False, make_even=False):
+    ''' Взаимная корреляция функций. Если последний параметр равен True, то вкф центриеруется'''
     vkf = np.correlate(first_trace_values, second_trace_values, mode='same')
-    # Debug_vkf += vkf  # adds to return from window function
-    # np.double(vkf)
-    if not center_max:
-        return vkf
-    else:
+    if center_max:
         shift = lagrange(vkf)
-        # shifted_vkf += np.add(shifted_vkf, fourier_shift(vkf, shift))  # previous vkf, but having real pick in zero
-        return fourier_shift(vkf, shift)  # previous vkf, but having real pick in zero
+        vkf = fourier_shift(vkf, shift)  # previous vkf, but having real pick in zero
+    if make_even:
+        vkf_parts = np.split(vkf, 2)
+        mean = vkf_parts[0] + np.flip(vkf_parts[1])
+        even_vkf = np.concatenate((mean, np.flip(mean)))
+        vkf = even_vkf
+    return vkf
 
 
-def autocorrelation(trace_values: list):
+def auto_cor(trace_values: list):
     return np.correlate(trace_values, trace_values, mode='same')
 
+def process_traces(window_width, trace1, trace2, calculate_both_akf=True) -> tuple:
+    """Returns correlation functions: cross- abd auto-correlations - for given traces """
+    trace_length = len(trace1)
+    vkf = np.zeros(trace_length)
+    akf1 = np.zeros(trace_length)
+    akf2 = np.zeros(trace_length)
+    for count in range(trace_length - window_width + 1):
+        vkf += cross_cor(trace1, trace2, center_max=True, make_even=True)
+        akf1 += auto_cor(trace1)
+        if calculate_both_akf:
+            akf2 += auto_cor(trace2)
+    akf = [akf1, akf2] if calculate_both_akf else akf1
+    return vkf, akf
 
-def weights(vkf, akf):
+def window(*image, process_function=process_traces, width=None, result_storage=None):
+    """Позволяет работать на некоторой части, а не целой трассе. Применяется выделяет такие подобласти на двух соседних
+    трассах."""
+    if result_storage is None:
+        result_storage = WEIGHTS
+    window_width = width if width is not None else len(image[0])
+    trace_indices = range(len(image) - 1)
+    vkf_list, akf_list = [], []
+    for number in trace_indices:
+        left_trace = image[number]
+        right_trace = image[number+1]
+        if number < max(trace_indices):
+            correlations = process_function(window_width, left_trace, right_trace, calculate_both_akf=False)
+            akf_list.append(correlations[1])
+        else:
+            correlations = process_traces(window_width, left_trace, right_trace, calculate_both_akf=True)
+            akf_list.extend(correlations[1])
+        vkf_list.append(correlations[0])
+    vkf_mean = np.mean(vkf_list, axis=0)
+    VKFs = [vkf_mean for _ in range(len(image))]
+    AKFs = akf_list
+    result_storage = weights(VKFs, AKFs, dim=2)
+    return result_storage
+
+
+
+def weights(vkf, akf, dim=1):
     """ Coefficients, showing ratio between signal and noise. """
-    rakf = np.asarray([abs(value) for value in fourier_shift(akf - vkf, domain='f')])
-    vkf = np.asarray([abs(value) for value in fourier_shift(vkf, domain='f')])
-    w_akf = np.asarray([abs(value) for value in fourier_shift(akf, domain='f')])
-    gamma = max(abs(w_akf))
-    snr = smooth(np.divide(vkf, (rakf + 0.1 * gamma)), 7)
-    return snr
+    from source_data import ALL_COUNTS
+    if dim == 1:
+        noise_rate = np.asarray([abs(value) for value in np.fft.rfft(akf - vkf, norm=fourier_normalization)])
+        signal_rate = np.asarray([abs(value) for value in np.fft.rfft(vkf, norm=fourier_normalization)])
+        stabilizing_coef = 0.1 * max(noise_rate)
+        snr = smooth(np.divide(signal_rate, (noise_rate + stabilizing_coef)), ALL_COUNTS * 0.005)
+        return snr
+    elif dim == 2:
+        snrs = []
+        for i in range(len(vkf)):
+            snrs.append(weights(vkf[i], akf[i], dim=1))
+        return snrs
+    else:
+        raise ValueError("dim should be equal 1 or 2")
 
 
-def window(*traces_arr, width=None):
-    """ Main processing function. It's purpuse is
-    1: Splinter given arrays on sub-arrays.
-    2: Find ratio signal/noise for neighbouring arrays (for every frequency).
-    3: Return array of weight sets (adds last counted coefficients for given trace)
-    """
-    k = 1  # k = 1, because I want to start convolution from pair (traces[0], traces[1])
-    window_width = width if width is not None else len(traces_arr[0])
-    weights_dict = {}  # container for SNRs
-    wei = []  # container for SNRs
-    trace_length = len(traces_arr[0])
-    taper_ar = taper([1] * window_width)
-    All_debug_akfs = []
-    All_debug_vkfs = []
-    while k < len(traces_arr):
-        i = 0
-        counts_vkf = trace_length
-        Debug_vkf = np.zeros(counts_vkf)
-        pair_of_seismotes = traces_arr[(k - 1):(k + 1)]
-        shifted_vkf = np.zeros(counts_vkf)
-        akf_l = np.zeros(counts_vkf)
-        akf_r = np.zeros(counts_vkf)
-        # while i < trace_length - window_width + 1:
-        for i in range(trace_length - window_width + 1):
-            trace_left = np.zeros(trace_length)
-            trace_right = np.zeros(trace_length)
-            for j in range(window_width):
-                trace_left[j + i] = taper_ar[j] * pair_of_seismotes[0][i + j]
-                trace_right[j + i] = taper_ar[j] * pair_of_seismotes[1][i + j]
-            # vkf = np.correlate(trace_left, trace_right, mode='same')
-            # Debug_vkf += vkf  # adds to return from window function
-            # np.double(vkf)
-            # shift = lagrange(vkf)
-            # shifted_vkf += np.add(shifted_vkf, fourier_shift(vkf, shift))  # previous vkf, but having real pick in zero
-            Debug_vkf += cross_correlation(trace_left, trace_right)
-            print(len(Debug_vkf))
-            shifted_vkf += cross_correlation(trace_left, trace_right, center_max=True)
-
-            # akf_l += np.add(akf_l, np.correlate(trace_left, trace_left, mode='same'))
-            # akf_r += np.add(akf_r, np.correlate(trace_right, trace_right, mode='same'))
-            akf_l += autocorrelation(trace_left)
-            akf_r += autocorrelation(trace_right)
-            # i += 1  # Counter of windows amount on one seismote
-        # av_akf_left = akf_l / (trace_length - window_width + 1)
-        # av_akf_right = akf_r / (trace_length - window_width + 1)
-        # av_vkf = shifted_vkf / (trace_length - window_width + 1)
-        av_akf_left = akf_l
-        av_akf_right = akf_r
-        av_vkf = shifted_vkf
-        All_debug_vkfs.append(Debug_vkf / (trace_length - window_width + 1))
-        All_debug_akfs.append(av_akf_left)
-        snr_l = weights(av_vkf, av_akf_left)
-        snr_r = weights(av_vkf, av_akf_right)
-        weights_dict.update({"{}".format(str(k - 1)): snr_l,
-                             "{}".format(str(k)): snr_r})  # adds last coefficients counted for given trace
-        wei.append(snr_l)
-        k += 1
-        if k == len(traces_arr):
-            wei.append(snr_r)
-    return [All_debug_akfs, All_debug_vkfs, weights_dict, wei]
-
-
-def normalized_coefficients(**SNR):
-    """ Function that returns specific normalizing coefficients for each coordinate SNR value. """
-    sum = 0
-    trace_amount = len(SNR.keys())
-    trace_length = len(SNR.get("0"))
-    norm_coef_dict = {}
-    norm_coef_ar = np.zeros((trace_amount, trace_length), dtype=np.double)
-    for j in range(trace_length):
-        for i in range(trace_amount):  # sum of every i-coordinate value
-            sum += SNR.get("{}".format(i))[j]
-        for i in range(trace_amount):
-            norm_coef_ar[i][j] = (SNR["{}".format(i)][j]) / sum
-            norm_coef_dict.update({"{}".format(i): norm_coef_ar[i]})
-        sum = 0
-    return norm_coef_dict
-
-
-def opti_sum(*traces, **signal_noise_rates):
-    """ Main algorithm. Returns best SNR for given traces. """
-    traces_amount = len(traces)
-    trace_sum = 0
-    norm_coef = normalized_coefficients(**signal_noise_rates)
-    for i in range(traces_amount):
-        trace_sum += np.multiply(np.fft.rfft(traces[i], norm=fourier_normalization), norm_coef["{}".format(i)])
-    processed_summed_trace = np.float32(np.fft.irfft(trace_sum))
-    return processed_summed_trace
-
-
-def optis(signal):
-    return opti_sum(*signal, **window(*signal)[2])
-
-
-def straight_sum(*traces):
-    """ Basic sum of traces, normalized by theirs amount. """
-    traces_amount = len(traces)
-    trace_sum = 0
-    for i in range(traces_amount):
-        trace_sum += traces[i]
-    processed_summed_trace = trace_sum / traces_amount
-    return processed_summed_trace
+def alter_image(*image, coefficients):
+    from numpy import multiply
+    from numpy.fft import rfft, irfft
+    processed_image = []
+    true_scaling_coef, n, d = 0, 0, 0
+    for trace, coefficients in zip(image, coefficients):
+        trace_in_freq_domain = rfft(trace, norm=fourier_normalization)
+        mul_in_freq_domain = multiply(trace_in_freq_domain, coefficients)
+        processed_trace = irfft(mul_in_freq_domain, norm=fourier_normalization)
+        d += max(processed_trace)
+        n += max(trace)
+        processed_image.append(processed_trace)
+    true_scaling_coef = float(n / d)
+    return [optimal_trace * true_scaling_coef for optimal_trace in processed_image]

@@ -6,9 +6,9 @@ from datetime import datetime
 # from ops import straight_sum, optis
 
 # MACRO-PARAMETERS
-FREQUENCY = 1  # improves band pass filter resolution in time domain, but messing up frequency domain.
+FREQUENCY = 4  # improves band pass filter resolution in time domain, but messing up frequency domain.
 # Use this parameter only in ploting images for diploma
-COUNTS = 1200  # Improves frequency domain for each signal
+COUNTS = 600  # Improves frequency domain for each signal
 # to increase resolution in frequency domain. Not sure if it worked.
 ALL_COUNTS = FREQUENCY * COUNTS
 SEED = 1  # parameter to initialize random numbers generator. This controlling random factor is used in constructing
@@ -78,22 +78,16 @@ def band_pass_filter(w_min, w_max, show=False, crop=False):
         print("Error!!!")
         return None
 
+def pass_filter(*args):
+    result = []
+    for bpf in args:
+        w1, w2 = zip(bpf)
+        result.append(band_pass_filter(w1, w2))
+    return result
 
-def dirac_function(length, value):
-    # IT'S USELESS. DELETE
-    """Delta function with customable amplitude"""
-    delta = np.zeros(length)
-    delta[int(length / 2) - 1] = value
-    return delta
-
-
-def wave(band_pass_filter, amplitude=1, dirac_function=None):
+def wave(band_pass_filter, amplitude=1):
     """Returns one signal - band pass filter in time domain, scaled by variable 'amplitude'"""
-    CONV_MODE = 'same'
-    if dirac_function is not None:
-        return np.convolve(band_pass_filter, dirac_function, mode=CONV_MODE)
-    else:
-        return np.multiply(band_pass_filter, amplitude)
+    return np.multiply(band_pass_filter, amplitude)
 
 
 def signal(forming_wave, reflection, noise=None):
@@ -108,7 +102,18 @@ def signal(forming_wave, reflection, noise=None):
 
 # SEISMIC IMAGES CONSTRUCTORS
 
-def area_reflectivity(geo_layers_amount, traces_amount, shift=0, fluctuation=False):
+def layers_dip(traces_amount):
+    from random import randint, uniform, choices
+    from numpy.polynomial.polynomial import Polynomial
+
+    poly_coef = [uniform(-COUNTS/10, COUNTS/10) for _ in range(randint(2, 6))]
+    P = Polynomial(poly_coef)
+    dip_trajectory = [P(x) for x in np.linspace(-1, 1, num=1000)]
+    registered_values = [round(val) for val in dip_trajectory[0::(round(1000/traces_amount))]]
+    return registered_values
+
+
+def area_reflectivity(geo_layers_amount, traces_amount, shift=0, rand=False):
     """Constructor for geophysical visualization of area. Crucial method for testing.
     :return list of reflectivity traces in each seismic source
     """
@@ -116,9 +121,9 @@ def area_reflectivity(geo_layers_amount, traces_amount, shift=0, fluctuation=Fal
     areal_reflect = []
     picks_positions = [randint(0, ALL_COUNTS) for _ in range(geo_layers_amount)]
     picks_values = [uniform(-1, 1) for _ in range(geo_layers_amount)]
+    height_dif = layers_dip(traces_amount) if rand else [shift * i for i in range(traces_amount)]
     for i in range(traces_amount):
-        if shift != 0:
-            picks_positions = np.add(picks_positions, shift * i)
+        picks_positions = np.add(picks_positions, height_dif[i])
         recordings = geo_reflect(picks_positions, picks_values)
         areal_reflect.append(recordings)
     seed(datetime.now())  # move random numbers generator back to loose state
@@ -133,33 +138,3 @@ def seismic_image(forming_geo_area, forming_wave, stand_div=0):
         image.append(pure_signal)
     return image
 
-
-# # DELETE METHODS BELOW
-# def sort(*seismogramms):
-#     sorted_list = []
-#     traces_same_position = []
-#     for i in range(len(seismogramms[0])):
-#         for ogt in seismogramms:
-#             traces_same_position.append(ogt[i])
-#         sorted_list.append(traces_same_position)
-#         traces_same_position = []
-#     return sorted_list
-#
-# def OPS(*seismogramms):
-#     """Makes optimal OGT"""
-#     sorted_traces = sort(*seismogramms)
-#     optimal_OGT = []
-#     for traces in sorted_traces:
-#         optimal_trace = optis(traces)
-#         optimal_OGT.append(optimal_trace)
-#     return optimal_OGT
-#
-#
-# def SS(*seismogramms):
-#     """Just straight sum"""
-#     sorted_traces = sort(*seismogramms)
-#     straight_OGT = []
-#     for traces in sorted_traces:
-#         straight_trace = straight_sum(*traces)
-#         straight_OGT.append(straight_trace)
-#     return straight_OGT
