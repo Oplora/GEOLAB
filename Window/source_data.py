@@ -6,12 +6,12 @@ from datetime import datetime
 # from ops import straight_sum, optis
 
 # MACRO-PARAMETERS
-FREQUENCY = 4  # improves band pass filter resolution in time domain, but messing up frequency domain.
+FREQUENCY = 2  # improves band pass filter resolution in time domain, but messing up frequency domain.
 # Use this parameter only in ploting images for diploma
-COUNTS = 600  # Improves frequency domain for each signal
+COUNTS = 1200  # Improves frequency domain for each signal
 # to increase resolution in frequency domain. Not sure if it worked.
 ALL_COUNTS = FREQUENCY * COUNTS
-SEED = 1  # parameter to initialize random numbers generator. This controlling random factor is used in constructing
+SEED = 17  # parameter to initialize random numbers generator. This controlling random factor is used in constructing
 # 'random' geological area reflectivity
 EXCEPTION_COLOR = '\033[1;35m'
 
@@ -103,13 +103,15 @@ def signal(forming_wave, reflection, noise=None):
 # SEISMIC IMAGES CONSTRUCTORS
 
 def layers_dip(traces_amount):
-    from random import randint, uniform, choices
+    from random import randint, uniform
+    from math import ceil
     from numpy.polynomial.polynomial import Polynomial
 
     poly_coef = [uniform(-COUNTS/10, COUNTS/10) for _ in range(randint(2, 6))]
     P = Polynomial(poly_coef)
-    dip_trajectory = [P(x) for x in np.linspace(-1, 1, num=1000)]
-    registered_values = [round(val) for val in dip_trajectory[0::(round(1000/traces_amount))]]
+    indexes = 1000
+    dip_trajectory = [P(x) for x in np.linspace(-1, 1, num=indexes)]
+    registered_values = [ceil(val) for val in dip_trajectory[0::(ceil(indexes/traces_amount))]]
     return registered_values
 
 

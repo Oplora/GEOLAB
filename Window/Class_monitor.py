@@ -65,6 +65,7 @@ TITLE_WEIGHT = 'bold'
 
 # GLOBAL VARIABLES
 GRAPHS_AMOUNT = 0
+MODE = None
 
 
 # DEFAULT METHODS
@@ -80,11 +81,11 @@ def plot_and_design(axis: plt.Axes, graph, color, X_axis=None):
         axis.axhline(0, color='black', lw=1)
         counts = range(len(graph))
     if color is not None:
-        # axis.plot(graph, counts, color=color)
-        axis.plot(counts, graph, color=color)
+        axis.plot(graph, counts, color=color)
+        # axis.plot(counts, graph, color=color)
     else:
         # axis.plot(graph, counts)
-        axis.plot(counts, graph, )
+        axis.plot(counts, graph)
 
 
 def separately(graphs: list, **visual: dict) -> None:
@@ -104,11 +105,15 @@ def separately(graphs: list, **visual: dict) -> None:
 def jointly(graphs: list, **visual: dict) -> None:
     """Make one figure with one axis.
      Axis contains all graphs from 'graphs'"""
+    from numpy import add
     fig, axis = plt.subplots()
     colors = extract('color', visual)
     legend = visual.get('legend')
     for i in range(GRAPHS_AMOUNT):
-        produce(PLOT_AND_DESIGN)(axis, graphs[i], colors[i])
+        shift = [i * max(graphs[0]) * 0.5 for _ in range(len(graphs[i]))]
+        # shift = [i * 100 for _ in range(len(graphs[i]))]
+        graph = add(graphs[i], shift)
+        produce(PLOT_AND_DESIGN)(axis, graph, colors[i])
     manage_legend(axis, legend)
     customize_figure(fig, **visual)
 
@@ -138,7 +143,7 @@ def sep_comb(graphs_list: list[list], **visual: dict) -> None:
         for i in range(GRAPHS_AMOUNT):
             axis = axes if GRAPHS_AMOUNT == 1 else axes[i][j]
             produce(PLOT_AND_DESIGN)(axis, graph[i], colors[j], X_axes[j])
-    customize_figure(fig, **visual)
+    customize_figure(fig, axes, **visual)
 
 
 PLOT_AND_DESIGN = plot_and_design
@@ -168,16 +173,18 @@ def show(*graphs, fig_title=None, legend=None, mode='sep', color=None, xy_labels
          with_next=False, save=False, close=False):
     """ Make visualizational image for given graphs. """
     # global GRAPHS_AMOUNT
+    global MODE
+    MODE = mode
     set_graphs_amount(*graphs)
     visual_customization = {'color': color, 'xy_labels': xy_labels, 'fig_title': fig_title, 'legend': legend,
                             'X_axis': X_axis}
-    if mode == 'sep':
+    if MODE == 'sep':
         produce(SEPARATELY)(graphs, **visual_customization)
-    elif mode == 'join':
+    elif MODE == 'join':
         produce(JOINTLY)(graphs, **visual_customization)
-    elif mode == 'comb':
+    elif MODE == 'comb':
         produce(SORTED)(graphs, **visual_customization)
-    elif mode == 'sepcomb':
+    elif MODE == 'sepcomb':
         produce(SEP_COMB)(graphs, **visual_customization)
     if save:
         plt.savefig(fig_title)
@@ -187,13 +194,24 @@ def show(*graphs, fig_title=None, legend=None, mode='sep', color=None, xy_labels
         plt.show()
 
 
-def customize_figure(fig: plt.Figure, **visual: dict) -> None:
+def customize_figure(fig: plt.Figure, axes=None, **visual: dict) -> None:
     fig.set_figheight(HEIGHT)
     fig.set_figwidth(WIDTH)
     fig.suptitle(f"{visual.get('fig_title')}", fontsize=FIG_FONTSIZE, fontweight=FIG_FONTWEIGHT)
     if isinstance(visual.get('xy_labels'), list):
-        fig.supxlabel(visual.get('xy_labels')[0], style=OX_LABEL_STYLE)
-        fig.supylabel(visual.get('xy_labels')[1], style=OY_LABEL_STYLE)
+        x_label = visual.get('xy_labels')[0]
+        y_label = visual.get('xy_labels')[1]
+        if MODE == 'sepcomb':
+            plt.setp(axes[-1, 0], xlabel=x_label[0])
+            plt.setp(axes[-1, 1], xlabel=x_label[1])
+            plt.setp(axes[:, 0], ylabel=y_label[0])
+            plt.setp(axes[:, 1], ylabel=y_label[1])
+        elif MODE == 'sep':
+            fig.supxlabel(x_label, style=OX_LABEL_STYLE)
+            fig.supylabel(y_label, style=OY_LABEL_STYLE)
+        elif MODE == 'join':
+            fig.supxlabel(x_label, style=OX_LABEL_STYLE)
+            fig.supylabel(y_label, style=OY_LABEL_STYLE)
 
 
 def extract(key: str, from_dictionary: dict):
