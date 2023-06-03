@@ -11,7 +11,7 @@ FREQUENCY = 2  # improves band pass filter resolution in time domain, but messin
 COUNTS = 1200  # Improves frequency domain for each signal
 # to increase resolution in frequency domain. Not sure if it worked.
 ALL_COUNTS = FREQUENCY * COUNTS
-SEED = 17  # parameter to initialize random numbers generator. This controlling random factor is used in constructing
+SEED = 170  # parameter to initialize random numbers generator. This controlling random factor is used in constructing
 # 'random' geological area reflectivity
 EXCEPTION_COLOR = '\033[1;35m'
 

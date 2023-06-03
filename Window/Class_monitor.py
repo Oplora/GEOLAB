@@ -55,8 +55,8 @@ AX_TITLE_FONTSIZE = 10
 AX_LEGEND_FONTSIZE = 10
 
 # DEFAULT FIGURE
-HEIGHT = 13
-WIDTH = 17
+HEIGHT = 17
+WIDTH = 14
 OX_LABEL_STYLE = "italic"
 OY_LABEL_STYLE = OX_LABEL_STYLE
 FIG_FONTSIZE = 20
@@ -84,8 +84,8 @@ def plot_and_design(axis: plt.Axes, graph, color, X_axis=None):
         axis.plot(graph, counts, color=color)
         # axis.plot(counts, graph, color=color)
     else:
-        # axis.plot(graph, counts)
-        axis.plot(counts, graph)
+        axis.plot(graph, counts)
+        # axis.plot(counts, graph)
 
 
 def separately(graphs: list, **visual: dict) -> None:

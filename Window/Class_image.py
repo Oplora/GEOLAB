@@ -44,7 +44,6 @@ class SeisImage():
             if not isinstance(image, SeisImage):
                 raise TypeError(f"MCOP can process only SeisImage's list, but found {type(image)}")
             else:
-
                 processed_images.append((image.optimal()).traces)
         optimal_image = SeisImage(mean(processed_images, axis=0))
         # optimal_image = optimal_image
